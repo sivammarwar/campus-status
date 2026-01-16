@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, CurrentStatus } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, DoorOpen, RefreshCw, Clock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ArrowLeft, DoorOpen, RefreshCw, Clock, Search, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function OutStudents() {
@@ -11,6 +12,7 @@ export default function OutStudents() {
   const [students, setStudents] = useState<CurrentStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchOutStudents = async () => {
     setLoading(true);
@@ -65,6 +67,16 @@ export default function OutStudents() {
     return `${minutes}m ago`;
   };
 
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery.trim()) return students;
+    const query = searchQuery.toLowerCase();
+    return students.filter(
+      student =>
+        student.name.toLowerCase().includes(query) ||
+        student.roll_number.toLowerCase().includes(query)
+    );
+  }, [students, searchQuery]);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card sticky top-0 z-10">
@@ -74,11 +86,34 @@ export default function OutStudents() {
           </Button>
           <div className="flex-1">
             <h1 className="text-lg font-bold">Out Students</h1>
-            <p className="text-sm text-muted-foreground">{students.length} currently out</p>
+            <p className="text-sm text-muted-foreground">{filteredStudents.length} of {students.length} currently out</p>
           </div>
           <Button variant="outline" size="icon" onClick={fetchOutStudents} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
+        </div>
+        
+        {/* Search Bar */}
+        <div className="container mx-auto px-4 pb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or roll number..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => setSearchQuery('')}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -95,16 +130,18 @@ export default function OutStudents() {
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-        ) : students.length === 0 ? (
+        ) : filteredStudents.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <DoorOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">All students are on campus</p>
+              <p className="text-muted-foreground">
+                {searchQuery ? 'No students match your search' : 'All students are on campus'}
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
-            {students.map((student, index) => (
+            {filteredStudents.map((student, index) => (
               <Card 
                 key={student.id} 
                 className="animate-fade-in border-l-4 border-l-warning" 
