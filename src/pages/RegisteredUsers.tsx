@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, ValidUser } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Users, RefreshCw } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ArrowLeft, Users, RefreshCw, Search, X } from 'lucide-react';
 
 export default function RegisteredUsers() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<ValidUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -33,6 +35,16 @@ export default function RegisteredUsers() {
     fetchUsers();
   }, []);
 
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const query = searchQuery.toLowerCase();
+    return users.filter(
+      user =>
+        user.name.toLowerCase().includes(query) ||
+        user.roll_number.toLowerCase().includes(query)
+    );
+  }, [users, searchQuery]);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card sticky top-0 z-10">
@@ -42,11 +54,34 @@ export default function RegisteredUsers() {
           </Button>
           <div className="flex-1">
             <h1 className="text-lg font-bold">Registered Users</h1>
-            <p className="text-sm text-muted-foreground">{users.length} students</p>
+            <p className="text-sm text-muted-foreground">{filteredUsers.length} of {users.length} students</p>
           </div>
           <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
+        </div>
+        
+        {/* Search Bar */}
+        <div className="container mx-auto px-4 pb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or roll number..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => setSearchQuery('')}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -63,16 +98,18 @@ export default function RegisteredUsers() {
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-        ) : users.length === 0 ? (
+        ) : filteredUsers.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No registered users found</p>
+              <p className="text-muted-foreground">
+                {searchQuery ? 'No students match your search' : 'No registered users found'}
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
-            {users.map((user, index) => (
+            {filteredUsers.map((user, index) => (
               <Card key={user.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
                 <CardHeader className="py-4">
                   <div className="flex items-center gap-4">
