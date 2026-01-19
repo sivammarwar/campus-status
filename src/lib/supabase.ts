@@ -22,3 +22,10 @@ export interface CurrentStatus {
   device_id: string | null;
   updated_at: string;
 }
+
+export interface RFIDLog {
+  id: number;
+  name: string;
+  timestamp: string;
+  status: 'IN' | 'OUT';
+}

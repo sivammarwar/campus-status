@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RegisteredUsers from "./pages/RegisteredUsers";
 import OutStudents from "./pages/OutStudents";
+import RFIDLogs from "./pages/RFIDLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/registered-users" element={<ProtectedRoute><RegisteredUsers /></ProtectedRoute>} />
       <Route path="/out-students" element={<ProtectedRoute><OutStudents /></ProtectedRoute>} />
+      <Route path="/rfid-logs" element={<ProtectedRoute><RFIDLogs /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
