@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, LogOut as LogOutIcon, DoorOpen, Shield } from 'lucide-react';
+import { Users, LogOut as LogOutIcon, DoorOpen, Shield, Radio } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -39,7 +39,7 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card 
               className="cursor-pointer hover:border-primary transition-colors"
               onClick={() => navigate('/registered-users')}
@@ -74,6 +74,26 @@ export default function Dashboard() {
               <CardContent>
                 <Button variant="outline" className="w-full border-warning text-warning hover:bg-warning hover:text-warning-foreground">
                   View Out Students
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:border-blue-500 transition-colors"
+              onClick={() => navigate('/rfid-logs')}
+            >
+              <CardHeader className="pb-3">
+                <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center mb-2">
+                  <Radio className="w-6 h-6 text-blue-500" />
+                </div>
+                <CardTitle className="text-lg">RFID Logs</CardTitle>
+                <CardDescription>
+                  View all RFID entry/exit logs
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white">
+                  View Logs
                 </Button>
               </CardContent>
             </Card>
