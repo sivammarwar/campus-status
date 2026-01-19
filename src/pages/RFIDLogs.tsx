@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, RFIDLog } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,12 @@ export default function RFIDLogs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const startY = useRef(0);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -31,7 +35,7 @@ export default function RFIDLogs() {
       setLogs(data || []);
     }
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     fetchLogs();
@@ -48,10 +52,41 @@ export default function RFIDLogs() {
       )
       .subscribe();
 
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchLogs, 30000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(interval);
     };
-  }, []);
+  }, [fetchLogs]);
+
+  // Pull-to-refresh handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (mainRef.current?.scrollTop === 0) {
+      startY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (mainRef.current?.scrollTop === 0 && startY.current > 0) {
+      const currentY = e.touches[0].clientY;
+      const distance = Math.max(0, Math.min(100, currentY - startY.current));
+      if (distance > 0) {
+        setPullDistance(distance);
+        setIsPulling(true);
+      }
+    }
+  };
+
+  const handleTouchEnd = async () => {
+    if (pullDistance > 60) {
+      await fetchLogs();
+    }
+    setPullDistance(0);
+    setIsPulling(false);
+    startY.current = 0;
+  };
 
   const formatTime = (timestamp: string) => {
     return format(new Date(timestamp), 'MMM d, yyyy • h:mm a');
@@ -103,7 +138,22 @@ export default function RFIDLogs() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
+      <main 
+        ref={mainRef}
+        className="container mx-auto px-4 py-6 overflow-auto"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Pull-to-refresh indicator */}
+        {isPulling && (
+          <div 
+            className="flex justify-center items-center transition-all duration-200 overflow-hidden"
+            style={{ height: pullDistance }}
+          >
+            <RefreshCw className={`w-6 h-6 text-muted-foreground ${pullDistance > 60 ? 'text-primary animate-spin' : ''}`} />
+          </div>
+        )}
         {error && (
           <Card className="mb-4 border-destructive">
             <CardContent className="py-4 text-destructive text-center">
