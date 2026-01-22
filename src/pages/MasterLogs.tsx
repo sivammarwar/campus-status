@@ -5,8 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Search, RefreshCw, Radio, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ArrowLeft, Search, RefreshCw, Radio, X, CalendarIcon, Filter } from 'lucide-react';
+import { format, startOfDay, endOfDay } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function MasterLogs() {
   const navigate = useNavigate();
@@ -14,6 +17,9 @@ export default function MasterLogs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [showFilters, setShowFilters] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const mainRef = useRef<HTMLDivElement>(null);
@@ -23,11 +29,25 @@ export default function MasterLogs() {
     setLoading(true);
     setError(null);
 
-    const { data, error: fetchError } = await supabase
+    let query = supabase
       .from('master_logs')
       .select('*')
-      .order('timestamp', { ascending: false })
-      .limit(200);
+      .order('timestamp', { ascending: false });
+
+    // Apply date filters if set
+    if (startDate) {
+      query = query.gte('timestamp', startOfDay(startDate).toISOString());
+    }
+    if (endDate) {
+      query = query.lte('timestamp', endOfDay(endDate).toISOString());
+    }
+
+    // Limit only if no date filter is applied
+    if (!startDate && !endDate) {
+      query = query.limit(200);
+    }
+
+    const { data, error: fetchError } = await query;
 
     if (fetchError) {
       console.error('Error fetching logs:', fetchError);
@@ -36,7 +56,7 @@ export default function MasterLogs() {
       setLogs(data || []);
     }
     setLoading(false);
-  }, []);
+  }, [startDate, endDate]);
 
   useEffect(() => {
     fetchLogs();
@@ -97,6 +117,13 @@ export default function MasterLogs() {
     return place.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   };
 
+  const clearDateFilters = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
+
+  const hasDateFilter = startDate || endDate;
+
   const filteredLogs = useMemo(() => {
     if (!searchQuery.trim()) return logs;
     const query = searchQuery.toLowerCase();
@@ -120,19 +147,156 @@ export default function MasterLogs() {
               <div>
                 <h1 className="text-xl font-bold">Master Logs</h1>
                 <p className="text-sm text-muted-foreground">
-                  {logs.length} log{logs.length !== 1 ? 's' : ''}
+                  {filteredLogs.length} log{filteredLogs.length !== 1 ? 's' : ''}
+                  {hasDateFilter && ' (filtered)'}
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={fetchLogs}
-              disabled={loading}
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={showFilters ? 'secondary' : 'outline'}
+                size="icon"
+                onClick={() => setShowFilters(!showFilters)}
+                className="relative"
+              >
+                <Filter className="w-4 h-4" />
+                {hasDateFilter && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={fetchLogs}
+                disabled={loading}
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
+
+          {/* Date Range Filters */}
+          {showFilters && (
+            <div className="mb-4 p-3 bg-muted/50 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Date Range</span>
+                {hasDateFilter && (
+                  <Button variant="ghost" size="sm" onClick={clearDateFilters} className="h-7 text-xs">
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "justify-start text-left font-normal flex-1 min-w-[140px]",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "MMM d, yyyy") : "From date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      disabled={(date) => (endDate ? date > endDate : false) || date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "justify-start text-left font-normal flex-1 min-w-[140px]",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "MMM d, yyyy") : "To date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      disabled={(date) => (startDate ? date < startDate : false) || date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Quick date presets */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    const today = new Date();
+                    setStartDate(today);
+                    setEndDate(today);
+                  }}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    const today = new Date();
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    setStartDate(yesterday);
+                    setEndDate(yesterday);
+                  }}
+                >
+                  Yesterday
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    const today = new Date();
+                    const weekAgo = new Date(today);
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    setStartDate(weekAgo);
+                    setEndDate(today);
+                  }}
+                >
+                  Last 7 days
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    const today = new Date();
+                    const monthAgo = new Date(today);
+                    monthAgo.setDate(monthAgo.getDate() - 30);
+                    setStartDate(monthAgo);
+                    setEndDate(today);
+                  }}
+                >
+                  Last 30 days
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -195,8 +359,13 @@ export default function MasterLogs() {
           <div className="text-center py-12">
             <Radio className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              {searchQuery ? 'No matching logs found' : 'No logs yet'}
+              {searchQuery || hasDateFilter ? 'No matching logs found' : 'No logs yet'}
             </p>
+            {hasDateFilter && (
+              <Button variant="link" onClick={clearDateFilters} className="mt-2">
+                Clear date filters
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
