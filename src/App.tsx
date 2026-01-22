@@ -7,8 +7,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RegisteredUsers from "./pages/RegisteredUsers";
-import OutStudents from "./pages/OutStudents";
-import RFIDLogs from "./pages/RFIDLogs";
+import PlaceDetails from "./pages/PlaceDetails";
+import MasterLogs from "./pages/MasterLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,8 +31,8 @@ function AppRoutes() {
       <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/registered-users" element={<ProtectedRoute><RegisteredUsers /></ProtectedRoute>} />
-      <Route path="/out-students" element={<ProtectedRoute><OutStudents /></ProtectedRoute>} />
-      <Route path="/rfid-logs" element={<ProtectedRoute><RFIDLogs /></ProtectedRoute>} />
+      <Route path="/place/:placeName" element={<ProtectedRoute><PlaceDetails /></ProtectedRoute>} />
+      <Route path="/master-logs" element={<ProtectedRoute><MasterLogs /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
